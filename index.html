@@ -257,6 +257,13 @@
 
   .empty-row{color:#a9a195; font-style:italic; font-size:12.5px;}
 
+  /* Prevent rows/sections from being split across a page break (print + PDF) */
+  table.doc-events tr{ break-inside: avoid; page-break-inside: avoid; }
+  .doc-pricing{ break-inside: avoid; page-break-inside: avoid; }
+  .doc-deliverables{ break-inside: avoid; page-break-inside: avoid; }
+  .doc-section-title{ break-after: avoid; page-break-after: avoid; }
+  .doc-header, .doc-meta-strip, .doc-footer{ break-inside: avoid; page-break-inside: avoid; }
+
   @media print{
     .topbar, .form-panel, .preview-toolbar{display:none;}
     .preview-panel{padding:0; background:#fff;}
@@ -619,7 +626,7 @@ document.getElementById('addDelivBtn').addEventListener('click', () => {
 ['clientNames','quoteNumber','quoteDate','clientPhone','location','originalPrice','finalPrice','advancePercent','notes']
   .forEach(id => document.getElementById(id).addEventListener('input', updatePreview));
 
-// ---------- PDF download ----------
+// ---------- PDF download (paginates around section boundaries, never splits a row) ----------
 document.getElementById('downloadPdfBtn').addEventListener('click', async () => {
   const btn = document.getElementById('downloadPdfBtn');
   const originalLabel = btn.innerHTML;
@@ -627,28 +634,89 @@ document.getElementById('downloadPdfBtn').addEventListener('click', async () => 
   btn.disabled = true;
 
   try {
-    const doc = document.getElementById('quoteDoc');
-    const canvas = await html2canvas(doc, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
-    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+    const docEl = document.getElementById('quoteDoc');
+
+    // Render the whole document to one large canvas at high resolution
+    const fullCanvas = await html2canvas(docEl, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
 
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF('p', 'mm', 'a4');
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    const imgWidth = pageWidth;
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    const pageWidthMm = pdf.internal.pageSize.getWidth();
+    const pageHeightMm = pdf.internal.pageSize.getHeight();
 
-    let heightLeft = imgHeight;
-    let position = 0;
+    // px-per-mm based on the canvas's own scale vs the rendered element width
+    const pxPerMm = fullCanvas.width / pageWidthMm;
+    const pageHeightPx = Math.floor(pageHeightMm * pxPerMm);
 
-    pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
-    heightLeft -= pageHeight;
+    // Collect the bottom edge (in canvas px) of every element that must not be split,
+    // so we know which y-offsets are SAFE to cut at.
+    const elRect = docEl.getBoundingClientRect();
+    const scaleFactor = fullCanvas.width / elRect.width;
+    const noSplitEls = docEl.querySelectorAll(
+      'table.doc-events tr, .doc-pricing, .doc-deliverables, .doc-header, .doc-meta-strip, .doc-footer, .doc-section-title'
+    );
+    const forbiddenRanges = Array.from(noSplitEls).map(el => {
+      const r = el.getBoundingClientRect();
+      const top = (r.top - elRect.top) * scaleFactor;
+      const bottom = (r.bottom - elRect.top) * scaleFactor;
+      return { top, bottom };
+    });
 
-    while (heightLeft > 0) {
-      position = heightLeft - imgHeight;
-      pdf.addPage();
-      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
+    // Given a desired cut position, nudge it upward if it lands inside a forbidden range
+    function findSafeCut(desiredY, maxY){
+      let safeY = desiredY;
+      let adjusted = true;
+      let guard = 0;
+      while(adjusted && guard < 50){
+        adjusted = false;
+        guard++;
+        for(const range of forbiddenRanges){
+          if(safeY > range.top && safeY < range.bottom){
+            safeY = range.top;
+            adjusted = true;
+          }
+        }
+      }
+      return Math.max(safeY, 10); // never cut at literally 0
+    }
+
+    let cursor = 0;
+    let pageIndex = 0;
+    const totalHeight = fullCanvas.height;
+
+    while (cursor < totalHeight) {
+      let sliceEnd = Math.min(cursor + pageHeightPx, totalHeight);
+      if (sliceEnd < totalHeight) {
+        sliceEnd = findSafeCut(sliceEnd, totalHeight);
+        if (sliceEnd <= cursor) {
+          // Safety fallback: forced break to avoid an infinite loop on pathological content
+          sliceEnd = cursor + pageHeightPx;
+        }
+      }
+
+      const sliceHeightPx = sliceEnd - cursor;
+
+      // Draw this slice onto a temp canvas
+      const sliceCanvas = document.createElement('canvas');
+      sliceCanvas.width = fullCanvas.width;
+      sliceCanvas.height = sliceHeightPx;
+      const ctx = sliceCanvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+      ctx.drawImage(
+        fullCanvas,
+        0, cursor, fullCanvas.width, sliceHeightPx,
+        0, 0, fullCanvas.width, sliceHeightPx
+      );
+
+      const imgData = sliceCanvas.toDataURL('image/jpeg', 0.95);
+      const sliceHeightMm = sliceHeightPx / pxPerMm;
+
+      if (pageIndex > 0) pdf.addPage();
+      pdf.addImage(imgData, 'JPEG', 0, 0, pageWidthMm, sliceHeightMm);
+
+      cursor = sliceEnd;
+      pageIndex++;
     }
 
     const clientName = (document.getElementById('clientNames').value || 'Quotation').replace(/[^a-zA-Z0-9]+/g, '_');
