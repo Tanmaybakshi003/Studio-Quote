@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quotation Builder</title>
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="googlebot" content="noindex, nofollow">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+  :root{
+    --ink:#1a1714;
+    --ink-soft:#4a443d;
+    --paper:#faf8f4;
+    --paper-dim:#f1ede4;
+    --line:#e3ddd0;
+    --gold:#b8935f;
+    --gold-deep:#8f6f44;
+    --gold-pale:#f3e9d8;
+    --panel:#ffffff;
+    --shadow: 0 20px 60px -20px rgba(26,23,20,.25);
+    --radius: 14px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    font-family:'Outfit', sans-serif;
+    background:
+      radial-gradient(circle at 15% 0%, #ece4d2 0%, transparent 45%),
+      radial-gradient(circle at 90% 100%, #e6dcc6 0%, transparent 50%),
+      var(--paper);
+    color:var(--ink);
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,h4{font-family:'Cormorant Garamond', serif; font-weight:500; letter-spacing:.01em;}
+  .eyebrow{
+    font-family:'Outfit',sans-serif; text-transform:uppercase; letter-spacing:.18em;
+    font-size:11px; color:var(--gold-deep); font-weight:600;
+  }
+
+  /* ===== Top bar ===== */
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:18px 32px; border-bottom:1px solid var(--line);
+    background:rgba(250,248,244,.85); backdrop-filter:blur(10px);
+    position:sticky; top:0; z-index:50;
+  }
+  .brand{display:flex; align-items:center; gap:12px;}
+  .brand-mark{
+    width:38px; height:38px; border-radius:50%; border:1.5px solid var(--gold);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Cormorant Garamond',serif; font-size:15px; color:var(--gold-deep); letter-spacing:.04em;
+  }
+  .brand-text{line-height:1.15;}
+  .brand-text .t1{font-family:'Cormorant Garamond',serif; font-size:19px;}
+  .brand-text .t2{font-size:10px; text-transform:uppercase; letter-spacing:.16em; color:var(--ink-soft);}
+  .topbar-tag{
+    font-size:11px; text-transform:uppercase; letter-spacing:.14em; color:var(--ink-soft);
+    border:1px solid var(--line); padding:6px 14px; border-radius:99px;
+  }
+
+  /* ===== Layout ===== */
+  .layout{
+    display:grid; grid-template-columns: 440px 1fr;
+    gap:0; align-items:start;
+  }
+  @media (max-width: 980px){ .layout{ grid-template-columns: 1fr; } }
+
+  /* ===== Form panel ===== */
+  .form-panel{
+    padding:32px 32px 80px;
+    max-height:calc(100vh - 75px);
+    overflow-y:auto;
+    border-right:1px solid var(--line);
+  }
+  @media (max-width: 980px){ .form-panel{ max-height:none; border-right:none; border-bottom:1px solid var(--line);} }
+
+  .form-panel::-webkit-scrollbar{width:6px;}
+  .form-panel::-webkit-scrollbar-thumb{background:var(--line); border-radius:99px;}
+
+  .panel-head{margin-bottom:24px;}
+  .panel-head h2{font-size:26px;}
+  .panel-head p{font-size:13px; color:var(--ink-soft); margin-top:4px;}
+
+  .field-group{margin-bottom:18px;}
+  .field-row{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  label{
+    display:block; font-size:11px; text-transform:uppercase; letter-spacing:.1em;
+    color:var(--ink-soft); margin-bottom:6px; font-weight:600;
+  }
+  input[type=text], input[type=tel], input[type=email], input[type=date], input[type=number], textarea, select{
+    width:100%; padding:11px 13px; border:1px solid var(--line); border-radius:9px;
+    font-family:'Outfit',sans-serif; font-size:14px; color:var(--ink); background:var(--panel);
+    transition:border-color .15s, box-shadow .15s;
+  }
+  input:focus, textarea:focus, select:focus{
+    outline:none; border-color:var(--gold); box-shadow:0 0 0 3px var(--gold-pale);
+  }
+  textarea{resize:vertical; min-height:60px;}
+
+  .section-divider{
+    display:flex; align-items:center; gap:10px; margin:30px 0 16px;
+  }
+  .section-divider span{font-size:11px; text-transform:uppercase; letter-spacing:.14em; color:var(--gold-deep); font-weight:600; white-space:nowrap;}
+  .section-divider::after{content:''; flex:1; height:1px; background:var(--line);}
+
+  /* ===== Event cards ===== */
+  .event-card{
+    border:1px solid var(--line); border-radius:12px; padding:16px;
+    margin-bottom:12px; background:var(--panel); position:relative;
+  }
+  .event-card-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;}
+  .event-card-head h4{font-size:16px; color:var(--gold-deep);}
+  .icon-btn{
+    width:26px; height:26px; border-radius:50%; border:1px solid var(--line);
+    background:var(--panel); color:var(--ink-soft); display:flex; align-items:center; justify-content:center;
+    cursor:pointer; font-size:12px; transition:all .15s;
+  }
+  .icon-btn:hover{border-color:#d9534f; color:#d9534f;}
+  .checkbox-row{display:flex; align-items:center; gap:8px; margin-top:8px;}
+  .checkbox-row input{width:16px; height:16px; accent-color:var(--gold-deep);}
+  .checkbox-row label{margin:0; text-transform:none; font-size:13px; letter-spacing:0; color:var(--ink);}
+
+  .add-btn{
+    width:100%; padding:12px; border:1.5px dashed var(--gold); border-radius:10px;
+    background:var(--gold-pale); color:var(--gold-deep); font-family:'Outfit',sans-serif;
+    font-size:13px; font-weight:600; letter-spacing:.03em; cursor:pointer; transition:all .15s;
+  }
+  .add-btn:hover{background:var(--gold); color:#fff;}
+
+  /* ===== Deliverables ===== */
+  .deliv-row{display:flex; gap:8px; margin-bottom:8px;}
+  .deliv-row input{flex:1;}
+
+  /* ===== Pricing ===== */
+  .price-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+
+  /* ===== Generate button (sticky bottom) ===== */
+  .form-actions{
+    position:sticky; bottom:0; background:linear-gradient(to top, var(--paper) 60%, transparent);
+    padding:20px 0 4px; margin-top:24px;
+  }
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    padding:14px 22px; border-radius:99px; font-family:'Outfit',sans-serif;
+    font-size:13px; font-weight:600; letter-spacing:.05em; text-transform:uppercase;
+    cursor:pointer; border:none; transition:all .2s; text-decoration:none;
+  }
+  .btn-gold{background:var(--gold-deep); color:#fff; width:100%;}
+  .btn-gold:hover{background:#7a5d38; transform:translateY(-1px);}
+  .btn-outline{background:transparent; border:1.5px solid var(--ink); color:var(--ink);}
+  .btn-outline:hover{background:var(--ink); color:#fff;}
+  .btn-wa{background:#25D366; color:#fff;}
+  .btn-wa:hover{background:#1ebd5a;}
+
+  /* ===== Preview panel ===== */
+  .preview-panel{
+    padding:32px; display:flex; flex-direction:column; align-items:center;
+    background:var(--paper-dim);
+    min-height:calc(100vh - 75px);
+  }
+  .preview-toolbar{
+    width:100%; max-width:760px; display:flex; justify-content:flex-end; gap:10px; margin-bottom:18px;
+  }
+
+  /* ===== The quotation document itself ===== */
+  #quoteDoc{
+    width:100%; max-width:760px; background:#fff;
+    box-shadow:var(--shadow); border-radius:6px; overflow:hidden;
+  }
+  .doc-header{
+    background: linear-gradient(135deg, #1a1714 0%, #2b2520 100%);
+    color:#f3ece0; padding:48px 50px 40px; position:relative; overflow:hidden;
+  }
+  .doc-header::before{
+    content:''; position:absolute; top:-40%; right:-10%; width:300px; height:300px;
+    border:1px solid rgba(184,147,95,.25); border-radius:50%;
+  }
+  .doc-header::after{
+    content:''; position:absolute; top:-25%; right:5%; width:200px; height:200px;
+    border:1px solid rgba(184,147,95,.18); border-radius:50%;
+  }
+  .doc-brand{display:flex; align-items:center; gap:12px; margin-bottom:34px; position:relative;}
+  .doc-brand-mark{
+    width:42px; height:42px; border-radius:50%; border:1.5px solid var(--gold);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Cormorant Garamond',serif; font-size:17px; color:var(--gold);
+  }
+  .doc-brand-text .l1{font-family:'Cormorant Garamond',serif; font-size:20px; letter-spacing:.02em;}
+  .doc-brand-text .l2{font-size:9px; text-transform:uppercase; letter-spacing:.2em; color:#cdbb98; margin-top:2px;}
+  .doc-header h1{font-size:14px; text-transform:uppercase; letter-spacing:.25em; color:#cdbb98; font-weight:500; position:relative;}
+  .doc-header .doc-title{font-family:'Cormorant Garamond',serif; font-size:42px; color:#fff; margin-top:8px; position:relative;}
+  .doc-header .doc-sub{font-size:13px; color:#a89878; margin-top:10px; position:relative;}
+
+  .doc-meta-strip{
+    display:flex; justify-content:space-between; padding:22px 50px; background:var(--gold-pale);
+    border-bottom:1px solid var(--line);
+  }
+  .doc-meta-item .lab{font-size:10px; text-transform:uppercase; letter-spacing:.12em; color:var(--gold-deep); font-weight:600;}
+  .doc-meta-item .val{font-family:'Cormorant Garamond',serif; font-size:18px; color:var(--ink); margin-top:2px;}
+
+  .doc-body{padding:40px 50px;}
+  .doc-section-title{
+    font-size:11px; text-transform:uppercase; letter-spacing:.16em; color:var(--gold-deep);
+    font-weight:600; margin-bottom:16px; display:flex; align-items:center; gap:10px;
+  }
+  .doc-section-title::after{content:''; flex:1; height:1px; background:var(--line);}
+
+  table.doc-events{width:100%; border-collapse:collapse; margin-bottom:36px;}
+  table.doc-events th{
+    text-align:left; font-size:10px; text-transform:uppercase; letter-spacing:.08em;
+    color:var(--ink-soft); padding:0 10px 10px; font-weight:600; border-bottom:1.5px solid var(--ink);
+  }
+  table.doc-events td{
+    padding:14px 10px; font-size:13.5px; border-bottom:1px solid var(--line); vertical-align:top;
+  }
+  table.doc-events td.ev-name{font-family:'Cormorant Garamond',serif; font-size:17px; color:var(--ink);}
+  table.doc-events td.ev-team{color:var(--ink-soft); font-size:12.5px; line-height:1.6;}
+  .drone-tag{
+    display:inline-block; font-size:10px; background:var(--gold-pale); color:var(--gold-deep);
+    padding:2px 8px; border-radius:99px; margin-top:4px; font-weight:600; letter-spacing:.03em;
+  }
+
+  .doc-deliverables{display:grid; grid-template-columns:1fr 1fr; gap:10px 24px; margin-bottom:36px;}
+  .deliv-item{display:flex; align-items:center; gap:10px; font-size:13.5px; color:var(--ink);}
+  .deliv-item i{color:var(--gold-deep); font-size:12px;}
+
+  .doc-pricing{
+    background:var(--paper-dim); border-radius:10px; padding:26px 30px; border:1px solid var(--line);
+  }
+  .price-line{display:flex; justify-content:space-between; align-items:center; padding:6px 0; font-size:14px;}
+  .price-line.strike .val{text-decoration:line-through; color:#a9a195;}
+  .price-line.discount .val{color:#b8593f;}
+  .price-line.final{
+    border-top:1.5px solid var(--ink); margin-top:10px; padding-top:14px;
+  }
+  .price-line.final .lab{font-family:'Cormorant Garamond',serif; font-size:19px;}
+  .price-line.final .val{font-family:'Cormorant Garamond',serif; font-size:28px; color:var(--gold-deep); font-weight:600;}
+
+  .doc-notes{margin-top:30px; font-size:12.5px; color:var(--ink-soft); line-height:1.7; white-space:pre-wrap;}
+
+  .doc-footer{
+    background:#1a1714; color:#a89878; padding:26px 50px; display:flex;
+    justify-content:space-between; align-items:center; font-size:12px;
+  }
+  .doc-footer .left{display:flex; gap:18px;}
+  .doc-footer a{color:#cdbb98; text-decoration:none;}
+  .doc-validity{font-size:11px; color:#7a6f5e; margin-top:2px;}
+
+  .empty-row{color:#a9a195; font-style:italic; font-size:12.5px;}
+
+  @media print{
+    .topbar, .form-panel, .preview-toolbar{display:none;}
+    .preview-panel{padding:0; background:#fff;}
+    #quoteDoc{box-shadow:none;}
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-mark">AS</div>
+    <div class="brand-text">
+      <div class="t1">Arun Sareen Photography</div>
+      <div class="t2">Quotation Builder</div>
+    </div>
+  </div>
+  <div class="topbar-tag"><i class="fa-solid fa-lock" style="margin-right:6px;"></i>Private tool — not linked publicly</div>
+</div>
+
+<div class="layout">
+
+  <!-- ============ FORM PANEL ============ -->
+  <div class="form-panel">
+    <div class="panel-head">
+      <h2>Build a Quotation</h2>
+      <p>Fill in the details below — the quotation on the right updates instantly.</p>
+    </div>
+
+    <div class="section-divider"><span>Client Details</span></div>
+    <div class="field-group">
+      <label for="clientNames">Client Name(s)</label>
+      <input type="text" id="clientNames" placeholder="e.g. Aryan &amp; Upasna" value="Aryan &amp; Upasna">
+    </div>
+    <div class="field-row">
+      <div class="field-group">
+        <label for="quoteNumber">Quotation No.</label>
+        <input type="text" id="quoteNumber" placeholder="Q-2026-014" value="Q-2026-014">
+      </div>
+      <div class="field-group">
+        <label for="quoteDate">Date</label>
+        <input type="date" id="quoteDate">
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field-group">
+        <label for="clientPhone">Phone / WhatsApp</label>
+        <input type="tel" id="clientPhone" placeholder="+91 00000 00000">
+      </div>
+      <div class="field-group">
+        <label for="location">Wedding Location</label>
+        <input type="text" id="location" placeholder="Udaipur, Rajasthan" value="Udaipur, Rajasthan">
+      </div>
+    </div>
+
+    <div class="section-divider"><span>Events &amp; Coverage</span></div>
+    <div id="eventsContainer"></div>
+    <button class="add-btn" id="addEventBtn" type="button"><i class="fa-solid fa-plus"></i>&nbsp; Add Event</button>
+
+    <div class="section-divider"><span>Deliverables</span></div>
+    <div id="delivContainer"></div>
+    <button class="add-btn" id="addDelivBtn" type="button"><i class="fa-solid fa-plus"></i>&nbsp; Add Deliverable</button>
+
+    <div class="section-divider"><span>Pricing</span></div>
+    <div class="price-grid">
+      <div class="field-group">
+        <label for="originalPrice">Original Price (₹)</label>
+        <input type="number" id="originalPrice" placeholder="450000" value="450000">
+      </div>
+      <div class="field-group">
+        <label for="finalPrice">Offer Price (₹)</label>
+        <input type="number" id="finalPrice" placeholder="385000" value="385000">
+      </div>
+    </div>
+    <div class="field-group">
+      <label for="advancePercent">Advance Required (%)</label>
+      <input type="number" id="advancePercent" placeholder="30" value="30">
+    </div>
+
+    <div class="section-divider"><span>Notes &amp; Terms</span></div>
+    <div class="field-group">
+      <label for="notes">Additional Notes</label>
+      <textarea id="notes">Quotation valid for 14 days from the date above. 30% advance confirms the booking; balance due 7 days before the first event. Travel &amp; stay for outstation crews to be arranged by the client or added separately.</textarea>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn btn-gold" id="downloadPdfBtn" type="button"><i class="fa-solid fa-file-arrow-down"></i>&nbsp; Download PDF</button>
+    </div>
+  </div>
+
+  <!-- ============ PREVIEW PANEL ============ -->
+  <div class="preview-panel">
+    <div class="preview-toolbar">
+      <button class="btn btn-wa" id="waShareBtn" type="button"><i class="fa-brands fa-whatsapp"></i>&nbsp; Share on WhatsApp</button>
+      <button class="btn btn-outline" id="printBtn" type="button"><i class="fa-solid fa-print"></i>&nbsp; Print</button>
+    </div>
+
+    <div id="quoteDoc">
+      <div class="doc-header">
+        <div class="doc-brand">
+          <div class="doc-brand-mark">AS</div>
+          <div class="doc-brand-text">
+            <div class="l1">Arun Sareen Photography</div>
+            <div class="l2">Wedding &amp; Cinematic Studio</div>
+          </div>
+        </div>
+        <h1>Quotation</h1>
+        <div class="doc-title" id="docClientNames">Aryan &amp; Upasna</div>
+        <div class="doc-sub" id="docLocation">Udaipur, Rajasthan</div>
+      </div>
+
+      <div class="doc-meta-strip">
+        <div class="doc-meta-item">
+          <div class="lab">Quotation No.</div>
+          <div class="val" id="docQuoteNumber">Q-2026-014</div>
+        </div>
+        <div class="doc-meta-item">
+          <div class="lab">Date</div>
+          <div class="val" id="docDate">—</div>
+        </div>
+        <div class="doc-meta-item">
+          <div class="lab">Valid Until</div>
+          <div class="val" id="docValidUntil">—</div>
+        </div>
+      </div>
+
+      <div class="doc-body">
+        <div class="doc-section-title">Event Coverage</div>
+        <table class="doc-events">
+          <thead>
+            <tr><th>Event</th><th>Date</th><th>Coverage Team</th></tr>
+          </thead>
+          <tbody id="docEventsBody"></tbody>
+        </table>
+
+        <div class="doc-section-title">Deliverables</div>
+        <div class="doc-deliverables" id="docDeliverables"></div>
+
+        <div class="doc-section-title">Investment</div>
+        <div class="doc-pricing">
+          <div class="price-line strike">
+            <span class="lab">Package Value</span>
+            <span class="val" id="docOriginalPrice">₹0</span>
+          </div>
+          <div class="price-line discount">
+            <span class="lab">Special Offer Discount</span>
+            <span class="val" id="docDiscount">− ₹0</span>
+          </div>
+          <div class="price-line final">
+            <span class="lab">Total Investment</span>
+            <span class="val" id="docFinalPrice">₹0</span>
+          </div>
+          <div class="price-line" style="margin-top:14px; padding-top:14px; border-top:1px dashed var(--line);">
+            <span class="lab">Advance to Confirm Booking</span>
+            <span class="val" id="docAdvance">₹0</span>
+          </div>
+        </div>
+
+        <div class="doc-notes" id="docNotes"></div>
+      </div>
+
+      <div class="doc-footer">
+        <div class="left">
+          <span><i class="fa-solid fa-phone"></i>&nbsp; +91 85878 62476</span>
+          <span><i class="fa-solid fa-envelope"></i>&nbsp; hello@arunsareenphotography.com</span>
+        </div>
+        <div class="doc-validity">arunsareenphotography.com</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ---------- State ----------
+let events = [
+  { name:'Mehendi', date:'', photographers:1, videographers:1, drone:false },
+  { name:'Haldi', date:'', photographers:1, videographers:1, drone:false },
+  { name:'Wedding Ceremony', date:'', photographers:2, videographers:2, drone:true },
+  { name:'Reception', date:'', photographers:1, videographers:1, drone:false },
+];
+let deliverables = [
+  'Cinematic Wedding Film',
+  'Full-Length Edited Film',
+  'Same-Day Highlight Reel',
+  '400+ Edited Photographs',
+  'Premium Photo Album',
+  'Instagram-Ready Reels'
+];
+
+const eventsContainer = document.getElementById('eventsContainer');
+const delivContainer = document.getElementById('delivContainer');
+
+function renderEventForm(){
+  eventsContainer.innerHTML = '';
+  events.forEach((ev, i) => {
+    const card = document.createElement('div');
+    card.className = 'event-card';
+    card.innerHTML = `
+      <div class="event-card-head">
+        <h4>Event ${i+1}</h4>
+        <button class="icon-btn" data-remove-event="${i}" type="button" aria-label="Remove event"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="field-group">
+        <label>Event Name</label>
+        <input type="text" data-ev="name" data-i="${i}" value="${ev.name.replace(/"/g,'&quot;')}" placeholder="e.g. Sangeet">
+      </div>
+      <div class="field-row">
+        <div class="field-group">
+          <label>Date</label>
+          <input type="date" data-ev="date" data-i="${i}" value="${ev.date}">
+        </div>
+        <div class="field-group">
+          <label>Photographers</label>
+          <input type="number" min="0" data-ev="photographers" data-i="${i}" value="${ev.photographers}">
+        </div>
+      </div>
+      <div class="field-group">
+        <label>Videographers</label>
+        <input type="number" min="0" data-ev="videographers" data-i="${i}" value="${ev.videographers}">
+      </div>
+      <div class="checkbox-row">
+        <input type="checkbox" id="drone-${i}" data-ev="drone" data-i="${i}" ${ev.drone ? 'checked' : ''}>
+        <label for="drone-${i}">Drone coverage included</label>
+      </div>
+    `;
+    eventsContainer.appendChild(card);
+  });
+}
+
+function renderDelivForm(){
+  delivContainer.innerHTML = '';
+  deliverables.forEach((d, i) => {
+    const row = document.createElement('div');
+    row.className = 'deliv-row';
+    row.innerHTML = `
+      <input type="text" data-deliv="${i}" value="${d.replace(/"/g,'&quot;')}" placeholder="Deliverable">
+      <button class="icon-btn" data-remove-deliv="${i}" type="button" aria-label="Remove"><i class="fa-solid fa-xmark"></i></button>
+    `;
+    delivContainer.appendChild(row);
+  });
+}
+
+function fmtMoney(n){
+  n = Number(n) || 0;
+  return '₹' + n.toLocaleString('en-IN');
+}
+function fmtDate(d){
+  if(!d) return '—';
+  const dt = new Date(d + 'T00:00:00');
+  if(isNaN(dt)) return '—';
+  return dt.toLocaleDateString('en-IN', { day:'numeric', month:'long', year:'numeric' });
+}
+
+function updatePreview(){
+  document.getElementById('docClientNames').innerHTML = document.getElementById('clientNames').value || 'Client Name';
+  document.getElementById('docLocation').textContent = document.getElementById('location').value || '';
+  document.getElementById('docQuoteNumber').textContent = document.getElementById('quoteNumber').value || '—';
+
+  const qDate = document.getElementById('quoteDate').value;
+  document.getElementById('docDate').textContent = qDate ? fmtDate(qDate) : fmtDate(new Date().toISOString().slice(0,10));
+
+  // valid until = quote date + 14 days
+  let baseDate = qDate ? new Date(qDate+'T00:00:00') : new Date();
+  let validUntil = new Date(baseDate);
+  validUntil.setDate(validUntil.getDate() + 14);
+  document.getElementById('docValidUntil').textContent = validUntil.toLocaleDateString('en-IN', { day:'numeric', month:'long', year:'numeric' });
+
+  // events table
+  const tbody = document.getElementById('docEventsBody');
+  if(events.length === 0){
+    tbody.innerHTML = `<tr><td colspan="3" class="empty-row">No events added yet</td></tr>`;
+  } else {
+    tbody.innerHTML = events.map(ev => `
+      <tr>
+        <td class="ev-name">${ev.name || 'Untitled Event'}</td>
+        <td>${fmtDate(ev.date)}</td>
+        <td class="ev-team">
+          ${ev.photographers} Photographer${ev.photographers != 1 ? 's' : ''}<br>
+          ${ev.videographers} Videographer${ev.videographers != 1 ? 's' : ''}
+          ${ev.drone ? '<br><span class="drone-tag"><i class="fa-solid fa-helicopter"></i> Drone Coverage</span>' : ''}
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  // deliverables
+  const dEl = document.getElementById('docDeliverables');
+  dEl.innerHTML = deliverables.filter(d => d.trim()).map(d => `
+    <div class="deliv-item"><i class="fa-solid fa-circle-check"></i> ${d}</div>
+  `).join('') || `<div class="empty-row">No deliverables added yet</div>`;
+
+  // pricing
+  const orig = Number(document.getElementById('originalPrice').value) || 0;
+  const final = Number(document.getElementById('finalPrice').value) || 0;
+  const discount = Math.max(orig - final, 0);
+  const advPct = Number(document.getElementById('advancePercent').value) || 0;
+  const advance = Math.round(final * advPct / 100);
+
+  document.getElementById('docOriginalPrice').textContent = fmtMoney(orig);
+  document.getElementById('docDiscount').textContent = '− ' + fmtMoney(discount);
+  document.getElementById('docFinalPrice').textContent = fmtMoney(final);
+  document.getElementById('docAdvance').textContent = fmtMoney(advance) + ` (${advPct}%)`;
+
+  document.getElementById('docNotes').textContent = document.getElementById('notes').value;
+}
+
+// ---------- Event delegation for dynamic fields ----------
+eventsContainer.addEventListener('input', (e) => {
+  const t = e.target;
+  if(t.dataset.ev !== undefined){
+    const i = Number(t.dataset.i);
+    const field = t.dataset.ev;
+    if(field === 'drone'){
+      events[i][field] = t.checked;
+    } else if(field === 'photographers' || field === 'videographers'){
+      events[i][field] = Number(t.value) || 0;
+    } else {
+      events[i][field] = t.value;
+    }
+    updatePreview();
+  }
+});
+eventsContainer.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-remove-event]');
+  if(btn){
+    events.splice(Number(btn.dataset.removeEvent), 1);
+    renderEventForm();
+    updatePreview();
+  }
+});
+
+delivContainer.addEventListener('input', (e) => {
+  if(e.target.dataset.deliv !== undefined){
+    deliverables[Number(e.target.dataset.deliv)] = e.target.value;
+    updatePreview();
+  }
+});
+delivContainer.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-remove-deliv]');
+  if(btn){
+    deliverables.splice(Number(btn.dataset.removeDeliv), 1);
+    renderDelivForm();
+    updatePreview();
+  }
+});
+
+document.getElementById('addEventBtn').addEventListener('click', () => {
+  events.push({ name:'', date:'', photographers:1, videographers:1, drone:false });
+  renderEventForm();
+  updatePreview();
+});
+document.getElementById('addDelivBtn').addEventListener('click', () => {
+  deliverables.push('');
+  renderDelivForm();
+  updatePreview();
+});
+
+// Static field listeners
+['clientNames','quoteNumber','quoteDate','clientPhone','location','originalPrice','finalPrice','advancePercent','notes']
+  .forEach(id => document.getElementById(id).addEventListener('input', updatePreview));
+
+// ---------- PDF download ----------
+document.getElementById('downloadPdfBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('downloadPdfBtn');
+  const originalLabel = btn.innerHTML;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>&nbsp; Generating...';
+  btn.disabled = true;
+
+  try {
+    const doc = document.getElementById('quoteDoc');
+    const canvas = await html2canvas(doc, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const imgWidth = pageWidth;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+    let heightLeft = imgHeight;
+    let position = 0;
+
+    pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
+
+    while (heightLeft > 0) {
+      position = heightLeft - imgHeight;
+      pdf.addPage();
+      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+    }
+
+    const clientName = (document.getElementById('clientNames').value || 'Quotation').replace(/[^a-zA-Z0-9]+/g, '_');
+    pdf.save(`Quotation_${clientName}.pdf`);
+  } catch(err){
+    alert('Something went wrong generating the PDF. Please try again.');
+    console.error(err);
+  } finally {
+    btn.innerHTML = originalLabel;
+    btn.disabled = false;
+  }
+});
+
+// ---------- Print ----------
+document.getElementById('printBtn').addEventListener('click', () => window.print());
+
+// ---------- WhatsApp share ----------
+document.getElementById('waShareBtn').addEventListener('click', () => {
+  const name = document.getElementById('clientNames').value || 'there';
+  const loc = document.getElementById('location').value || '';
+  const final = Number(document.getElementById('finalPrice').value) || 0;
+  const qNum = document.getElementById('quoteNumber').value || '';
+  const phone = (document.getElementById('clientPhone').value || '').replace(/[^0-9]/g, '');
+
+  const msg = `Hi ${name}! 🎉\n\nThank you for considering Arun Sareen Photography for your wedding in ${loc}.\n\nQuotation ${qNum} — Total Investment: ${fmtMoney(final)}\n\nWe've prepared a detailed quotation covering all events, the coverage team, and full deliverables. We'll send the PDF over shortly — let us know if you have any questions!\n\nLooking forward to capturing your story. ✨`;
+
+  const url = phone
+    ? `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`
+    : `https://wa.me/?text=${encodeURIComponent(msg)}`;
+  window.open(url, '_blank');
+});
+
+// ---------- Init ----------
+document.getElementById('quoteDate').value = new Date().toISOString().slice(0,10);
+renderEventForm();
+renderDelivForm();
+updatePreview();
+</script>
+
+</body>
+</html>
